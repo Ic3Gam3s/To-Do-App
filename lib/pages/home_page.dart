@@ -11,26 +11,108 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<Task> tasks = [
     Task("Einkaufsliste erstellen"),
-    Task("Wirtschaftshausaufgaben machen", DateTime(2024, 5,20)),
+    Task("Wirtschaftshausaufgaben machen", DateTime(2024, 5, 20)),
     Task("Deutschbuch lesen (Terror)", DateTime.now()),
   ];
-  List<Task> completedTasks = [
-    Task("Stärken / Schwächen aufschreiben"),
-    Task("Warum XY"),
-  ];
+  List<Task> completedTasks = [];
   bool showCompleteTasks = false;
 
-  Widget _taskListTile(Task task) {
+  Widget _taskListTile(Task task, int index) {
     return ListTile(
-      title: Text(task.text),
-      onTap: () {
+      leading: Checkbox(
+        value: task.complete,
+        onChanged: (value) {
+          setState(() {
+            task.complete = value!;
 
+            if (value!) {
+              completedTasks.add(task);
+              tasks.removeAt(index);
+            } else {
+              tasks.add(task);
+              completedTasks.removeAt(index);
+            }
+          });
+        },
+      ),
+      title: Text(task.text),
+      onTap: () async {
+        _openListTileDialog(task, index);
       },
     );
   }
 
-  void _openListTileDialog(Task? task) {
-    
+  void _openListTileDialog(Task? task, int? index) async {
+    TextEditingController _textController = TextEditingController();
+    TextEditingController _dateController = TextEditingController();
+
+    if (task != null) {
+      _textController.text = task.text;
+    }
+
+    Task? updatedTask = await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title:
+              Text(task != null ? "Task bearbeiten" : "Neuen Task erstellen"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _textController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                )
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("Abbrechen"),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            OutlinedButton(
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [Icon(Icons.save), Text("Task Speichern")],
+              ),
+              onPressed: () {
+                if (_textController.text.isNotEmpty) {
+                  Navigator.pop(
+                    context,
+                    Task(_textController.text),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (updatedTask != null) {
+      if (index != null) {
+        if (task!.complete) {
+          setState(() {
+            completedTasks[index] = updatedTask;
+          });
+        } else {
+          setState(() {
+            tasks[index] = updatedTask;
+          });
+        }
+      } else {
+        setState(() {
+          tasks.add(updatedTask);
+        });
+      }
+    }
   }
 
   @override
@@ -59,13 +141,13 @@ class _HomePageState extends State<HomePage> {
           children: [
             tasks.isNotEmpty
                 ? ListView.separated(
-                  shrinkWrap: true,
+                    shrinkWrap: true,
                     itemCount: tasks.length,
                     separatorBuilder: (BuildContext context, int index) {
-                      return Divider();
+                      return const Divider();
                     },
                     itemBuilder: (BuildContext context, int index) {
-                      return _taskListTile(tasks[index]);
+                      return _taskListTile(tasks[index], index);
                     },
                   )
                 : const Expanded(
@@ -86,9 +168,14 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
+            Divider(
+              thickness: 4,
+            ),
             ListTile(
               leading: Icon(
-                  showCompleteTasks ? Icons.arrow_drop_down : Icons.arrow_right, size: 32,),
+                showCompleteTasks ? Icons.arrow_drop_down : Icons.arrow_right,
+                size: 32,
+              ),
               title: Text("Erledigt (${completedTasks.length})"),
               onTap: () {
                 setState(() {
@@ -100,56 +187,28 @@ class _HomePageState extends State<HomePage> {
                 });
               },
             ),
-            showCompleteTasks ? 
-            ListView.separated(
-              shrinkWrap: true,
-              itemCount: completedTasks.length,
-              separatorBuilder: (BuildContext context, int index) {
-                return Divider();
-              },
-              itemBuilder: (BuildContext context, int index) {
-                return _taskListTile(completedTasks[index]);
-              },
-            ) : SizedBox(height: 0,),
+            showCompleteTasks
+                ? ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: completedTasks.length,
+                    separatorBuilder: (BuildContext context, int index) {
+                      return const Divider();
+                    },
+                    itemBuilder: (BuildContext context, int index) {
+                      return _taskListTile(completedTasks[index], index);
+                    },
+                  )
+                : const SizedBox(
+                    height: 0,
+                  ),
           ],
         ),
       ),
-
-      /*tasks.isNotEmpty
-          ? ListView(
-              children: [
-                ListView.separated(
-                  itemCount: tasks.length,
-                  separatorBuilder: (BuildContext context, int index) {
-                    return Divider();
-                  },
-                  itemBuilder: (BuildContext context, int index) {
-                    return ListTile(
-                      title: Text(tasks[index].text),
-                    );
-                  },
-                ),
-              ],
-            )
-          : const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.celebration,
-                    size: 50,
-                  ),
-                  Text(
-                    "Nichts mehr zu tun!",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26),
-                  ),
-                ],
-              ),
-            ),*/
-
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () {},
+        child: const Icon(Icons.add),
+        onPressed: () {
+          _openListTileDialog(null, null);
+        },
       ),
     );
   }
